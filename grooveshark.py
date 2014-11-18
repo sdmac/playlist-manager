@@ -8,6 +8,10 @@ import playlist
 from difflib import SequenceMatcher
 
 
+class RateLimitExceeded(Exception):
+    pass
+
+
 class WebServiceBase(object):
     baseUrl = 'https://api.grooveshark.com/ws3.php'
 
@@ -38,6 +42,9 @@ class Session(WebServiceBase):
                           params={'sig': h.hexdigest()})
         jr = r.json()
         if r.status_code != 200 or 'result' not in jr or not jr['result']:
+            if 'errors' in jr and 'code' in jr['errors'][0]:
+                if jr['errors'][0]['code'] == 11:
+                    raise RateLimitExceeded(jr['errors'][0]['message'])
             raise RuntimeError('Grooveshark Error %s: %s'
                                % (r.status_code, jr['errors']))
         return jr
@@ -143,6 +150,16 @@ class Session(WebServiceBase):
         raise RuntimeError('Failed to get user info for %s: %s'
                             % (self.username, jr['errors']))
 
+    def get_playlists(self):
+        payload = {'method': 'getUserPlaylists',
+                   'header': {'wsKey': self.wsKey,
+                              'sessionID': self.session_id}}
+        jr = self._post(payload)
+        if 'result' in jr and 'playlists' in jr['result']:
+            return jr['result']['playlists']
+        raise RuntimeError('Failed to get playlists for %s: %s'
+                            % (self.username, jr['errors']))
+
     def create_playlist(self, name):
         print('Creating playlist named \'%s\'..' % name)
         payload = {'method': 'createPlaylist',
@@ -157,17 +174,24 @@ class Session(WebServiceBase):
         raise RuntimeError('Failed to create playlist %s: %s'
                             % (name, jr['errors']))
 
-    def add_songs_to_playlist(self, song_ids, playlist_name):
-        print('Adding song \'%s\' to playlist named \'%s\'..'
-                % (song_ids, playlist_name))
-        if playlist_name not in self.playlists:
-            raise RuntimeError("Unknown playlist")
+    def add_songs_to_playlist(self, song_ids,
+                              playlist_name=None, playlist_id=None):
+        if playlist_id:
+            print('Adding songs \'%s\' to playlist id %s..'
+                  % (song_ids, playlist_id))
+        else:
+            if playlist_name and playlist_name in self.playlists:
+                playlist_id = self.playlists[playlist_name]
+                print('Adding songs \'%s\' to playlist named \'%s\'..'
+                      % (song_ids, playlist_name))
+            else:
+                raise RuntimeError("Unknown playlist: " % playlist_name)
         exist_songs = []
         for es in self.get_songs_from_playlist(playlist_name):
             exist_songs.append(es['SongID'])
-        new_songs = exist_songs + song_ids
+        new_songs = list(set(exist_songs + song_ids))
         payload = {'method': 'setPlaylistSongs',
-                   'parameters': {'playlistID': self.playlists[playlist_name],
+                   'parameters': {'playlistID': playlist_id,
                                   'songIDs': new_songs},
                    'header': {'wsKey': self.wsKey,
                               'sessionID': self.session_id}}

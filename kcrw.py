@@ -106,7 +106,7 @@ class PlaylistUpdater(object):
     def __init__(self):
         self.fetcher = PlaylistFetcher()
 
-    def update(self, year, month, day):
+    def get_playlist(self, year, month):
         play_list = None
         file_name = "{0}{1}{2}{3}".format(self.file_prefix,
                                           year, month,
@@ -118,6 +118,11 @@ class PlaylistUpdater(object):
             play_list = Playlist(source='kcrw',
                                  name='%s%s' % (year, month),
                                  frequency='daily')
+        play_list_name = "kcrw-{0}-{1}".format(year, month)
+        return (play_list, play_list_name, file_name)
+
+    def update(self, year, month, day):
+        (play_list, _, _) = self.get_playlist(year, month)
         the_date = "{0}/{1}/{2}".format(month, day, year)
         if the_date in play_list.records:
             print "Playlist for {0} already exists".format(the_date)
