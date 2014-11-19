@@ -122,7 +122,7 @@ class PlaylistUpdater(object):
         return (play_list, play_list_name, file_name)
 
     def update(self, year, month, day):
-        (play_list, _, _) = self.get_playlist(year, month)
+        (play_list, play_list_name, file_name) = self.get_playlist(year, month)
         the_date = "{0}/{1}/{2}".format(month, day, year)
         if the_date in play_list.records:
             print "Playlist for {0} already exists".format(the_date)
@@ -132,7 +132,7 @@ class PlaylistUpdater(object):
             (p_list, search_date) = self.fetcher.fetch(the_date)
             if search_date == the_date:
                 print ("New date is valid, merging into {0} playlist"
-                        .format(file_name))
+                        .format(play_list_name))
                 play_list.playlist = merge_playlists(play_list.playlist, p_list)
                 play_list.records.append(the_date)
                 play_list.to_json_file(file_name)

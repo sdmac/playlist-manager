@@ -187,7 +187,7 @@ class Session(WebServiceBase):
             else:
                 raise RuntimeError("Unknown playlist: " % playlist_name)
         exist_songs = []
-        for es in self.get_songs_from_playlist(playlist_name):
+        for es in self.get_songs_from_playlist(playlist_id=playlist_id):
             exist_songs.append(es['SongID'])
         new_songs = list(set(exist_songs + song_ids))
         payload = {'method': 'setPlaylistSongs',
@@ -223,11 +223,14 @@ class Session(WebServiceBase):
         else:
             return False
 
-    def get_songs_from_playlist(self, playlist_name):
-        if playlist_name not in self.playlists:
-            raise RuntimeError("Unknown playlist")
+    def get_songs_from_playlist(self, playlist_name=None, playlist_id=None):
+        if not playlist_id:
+            if playlist_name and playlist_name in self.playlists:
+                playlist_id = self.playlists[playlist_name]
+            else:
+                raise RuntimeError("Unknown playlist: " % playlist_name)
         payload = {'method': 'getPlaylist',
-                   'parameters': {'playlistID': self.playlists[playlist_name],
+                   'parameters': {'playlistID': playlist_id,
                                   'limit': 500},
                    'header': {'wsKey': self.wsKey,
                               'sessionID': self.session_id}}
@@ -235,4 +238,4 @@ class Session(WebServiceBase):
         if 'result' in jr and 'Songs' in jr['result']:
             return jr['result']['Songs']
         raise RuntimeError('Failed to get songs from playlist %s: %s'
-                            % (playlist_name, jr['errors']))
+                            % (playlist_id, jr['errors']))
