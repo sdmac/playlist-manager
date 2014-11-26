@@ -112,26 +112,28 @@ class PlaylistUpdater(object):
     file_prefix = 'kcrw_playlist_'
     file_suffix = '.json'
 
-    def __init__(self):
+    def __init__(self, base_path):
         self.fetcher = PlaylistFetcher()
+        self.base_path = base_path
 
     def get_playlist(self, year, month):
         play_list = None
         file_name = "{0}{1}{2:02d}{3}".format(self.file_prefix,
                                               year, month,
                                               self.file_suffix)
-        if os.path.exists(file_name):
+        full_path = os.path.join(self.base_path, file_name)
+        if os.path.exists(full_path):
             play_list = Playlist()
-            play_list.from_json_file(file_name)
+            play_list.from_json_file(full_path)
         else:
             play_list = Playlist(source='kcrw',
                                  name='%s%s' % (year, month),
                                  frequency='daily')
         play_list_name = "kcrw-{0}-{1}".format(year, month)
-        return (play_list, play_list_name, file_name)
+        return (play_list, play_list_name, full_path)
 
     def update(self, year, month, day):
-        (play_list, play_list_name, file_name) = self.get_playlist(year, month)
+        (play_list, play_list_name, full_path) = self.get_playlist(year, month)
         the_date = "{0}/{1}/{2}".format(month, day, year)
         if the_date in play_list.records:
             print "Playlist for {0} already exists".format(the_date)
@@ -146,7 +148,7 @@ class PlaylistUpdater(object):
                 num_prev_songs = len(play_list.playlist)
                 play_list.playlist = merge_playlists(play_list.playlist, p_list)
                 play_list.records.append(the_date)
-                play_list.to_json_file(file_name)
+                play_list.to_json_file(full_path)
                 num_new_songs = len(play_list.playlist) - num_prev_songs
                 print (" ++ Done merging {0} new songs for total of {1} songs."
                         .format(num_new_songs, len(play_list.playlist)))
