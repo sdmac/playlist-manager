@@ -8,6 +8,7 @@ class PlaylistEntry(object):
 
     def __init__(self, json_rep=None):
         self.play_count = 0
+        self.sources = []
         if json_rep:
             for (k, v) in json_rep.iteritems():
                 setattr(self, k, v)
@@ -70,7 +71,11 @@ def merge_playlists(old, new):
                                     new_song.song.lower())
                 if s.ratio() > 0.75:
                     dup = True
-                    old_song.play_count = old_song.play_count + 1
+                    old_song.play_count = (old_song.play_count
+                                            + new_song.play_count)
+                    for src in new_song.sources:
+                        if src not in old_song.sources:
+                            old_song.sources.append(src)
         if not dup:
             # updating old ensures dups within new list are handled
             old.append(new_song)
